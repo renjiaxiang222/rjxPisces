@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍅 番茄钟</title>
+<style>
+  :root {
+    --bg: #fce4ec;
+    --card-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #f06292;
+    --work-color: #ef4444;
+    --work-color-rgb: 239, 68, 68;
+    --break-color: #10b981;
+    --break-color-rgb: 16, 185, 129;
+    --ring-bg: #e5e7eb;
+    --btn-ghost-bg: #f3f4f6;
+    --btn-ghost-hover: #e5e7eb;
+    --input-bg: #f9fafb;
+    --input-border: #d1d5db;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --divider: #e5e7eb;
+  }
+
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --ring-bg: #334155;
+    --btn-ghost-bg: #334155;
+    --btn-ghost-hover: #475569;
+    --input-bg: #1e293b;
+    --input-border: #475569;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --divider: #334155;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, color 0.3s;
+    user-select: none;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 40px 36px 32px;
+    width: 400px;
+    max-width: 94vw;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 28px;
+  }
+  .title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: var(--btn-ghost-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+  }
+  .icon-btn:hover { background: var(--btn-ghost-hover); color: var(--text); }
+
+  /* Timer Ring */
+  .timer-container {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin-bottom: 24px;
+  }
+  .ring-svg {
+    transform: rotate(-90deg);
+    width: 100%; height: 100%;
+  }
+  .ring-bg {
+    fill: none;
+    stroke: var(--ring-bg);
+    stroke-width: 10;
+  }
+  .ring-progress {
+    fill: none;
+    stroke: var(--work-color);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke 0.4s;
+  }
+  .ring-progress.break { stroke: var(--break-color); }
+  .timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .time-display {
+    font-size: 56px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .phase-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Round indicators */
+  .rounds {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .round-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--ring-bg);
+    transition: background 0.3s, transform 0.3s;
+  }
+  .round-dot.done, .round-dot.current { background: var(--work-color); }
+  .round-dot.current { transform: scale(1.3); box-shadow: 0 0 8px var(--work-color); }
+
+  /* Buttons */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 14px;
+    padding: 12px 28px;
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary {
+    background: var(--work-color);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(var(--work-color-rgb), 0.35);
+  }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary.break-mode {
+    background: var(--break-color);
+    box-shadow: 0 4px 14px rgba(var(--break-color-rgb), 0.35);
+  }
+  .btn-ghost {
+    background: var(--btn-ghost-bg);
+    color: var(--text);
+    font-weight: 500;
+  }
+  .btn-ghost:hover { background: var(--btn-ghost-hover); }
+  .btn-sm {
+    padding: 10px 18px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  /* Panel / Stats shared divider */
+  .section-divider {
+    width: 100%;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--divider);
+    transition: border-color 0.3s;
+  }
+  .panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .panel-row:last-child { margin-bottom: 0; }
+  .panel-row label { font-weight: 500; }
+  .time-input-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .time-input {
+    width: 48px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 6px 4px;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: inherit;
+  }
+  .time-input:focus { outline: 2px solid var(--work-color); outline-offset: -1px; }
+  .panel-label-sm {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .stats {
+    display: flex;
+    gap: 12px;
+  }
+  .stat-box {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    background: var(--btn-ghost-bg);
+    border-radius: 14px;
+  }
+  .stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 440px) {
+    .card { padding: 28px 20px 24px; }
+    .timer-container { width: 220px; height: 220px; }
+    .time-display { font-size: 44px; }
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="card">
+  <!-- Header -->
+  <div class="header">
+    <div class="title">🍅 番茄钟</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnSettings" title="设置">⚙️</button>
+      <button class="icon-btn" id="btnTheme" title="切换主题">🌙</button>
+    </div>
+  </div>
+
+  <!-- Timer Ring -->
+  <div class="timer-container">
+    <svg class="ring-svg" viewBox="0 0 300 300">
+      <circle class="ring-bg" cx="150" cy="150" r="140" />
+      <circle class="ring-progress" id="ringProgress" cx="150" cy="150" r="140"
+              stroke-dasharray="879.65" stroke-dashoffset="0" />
+    </svg>
+    <div class="timer-text">
+      <div class="time-display" id="timeDisplay">25:00</div>
+      <div class="phase-label" id="phaseLabel">🍅 准备开始</div>
+    </div>
+  </div>
+
+  <!-- Round Dots -->
+  <div class="rounds" id="roundDots"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-ghost btn-sm" id="btnReset" title="重置">↺</button>
+    <button class="btn btn-primary" id="btnStart">▶ 开始</button>
+    <button class="btn btn-ghost btn-sm" id="btnSkip" title="跳过">⏭</button>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="section-divider hidden" id="settingsPanel">
+    <div class="panel-row">
+      <label>🍅 专注时长（分钟）</label>
+      <div class="time-input-group">
+        <input class="time-input" id="inputWork" type="number" min="1" max="120" value="25">
+      </div>
+    </div>
+    <div class="panel-row">
+      <label>☕ 短休时长（分钟）</label>
+      <div class="time-input-group">
+        <input class="time-input" id="inputShortBreak" type="number" min="1" max="60" value="5">
+      </div>
+    </div>
+    <div class="panel-row">
+      <label>🛌 长休时长（分钟）</label>
+      <div class="time-input-group">
+        <input class="time-input" id="inputLongBreak" type="number" min="1" max="120" value="15">
+      </div>
+    </div>
+    <div class="panel-row">
+      <label>🔔 音量</label>
+      <div class="time-input-group">
+        <input class="time-input" id="inputVolume" type="number" min="0" max="100" value="70" style="width:56px;">
+        <span class="panel-label-sm">%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section-divider stats" id="statsBar">
+    <div class="stat-box">
+      <div class="stat-num" id="statToday">0</div>
+      <div class="stat-label">今日 🍅</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statWeek">0</div>
+      <div class="stat-label">本周 🍅</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">总计 🍅</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="statStreak">0</div>
+      <div class="stat-label">连续天数</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ───────────────────────────────────────────
+const RING_CIRCUMFERENCE = 2 * Math.PI * 140; // ~879.65
+const ROUNDS_PER_CYCLE = 4;
+const PHASE_LABELS = { work: '🍅 专注中', shortBreak: '☕ 短休息', longBreak: '🛌 长休息' };
+
+// ── State ──────────────────────────────────────────────
+const state = {
+  phase: 'work',
+  status: 'idle',
+  currentRound: 1,
+  completedPomodoros: 0,
+  remainingSeconds: 0,
+  timerStartMs: 0,
+  timerId: null,
+};
+
+const defaults = {
+  workMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 15,
+  volume: 70,
+  theme: 'light',
+};
+let settings = { ...defaults };
+let history = {};
+
+// ── DOM refs ───────────────────────────────────────────
+const $      = id => document.getElementById(id);
+const $timeDisplay   = $('timeDisplay');
+const $phaseLabel    = $('phaseLabel');
+const $ringProgress  = $('ringProgress');
+const $btnStart      = $('btnStart');
+const $btnReset      = $('btnReset');
+const $btnSkip       = $('btnSkip');
+const $btnTheme      = $('btnTheme');
+const $btnSettings   = $('btnSettings');
+const $settingsPanel = $('settingsPanel');
+const $roundDots     = $('roundDots');
+const $inputWork     = $('inputWork');
+const $inputShortBreak = $('inputShortBreak');
+const $inputLongBreak  = $('inputLongBreak');
+const $inputVolume   = $('inputVolume');
+const $statToday     = $('statToday');
+const $statWeek      = $('statWeek');
+const $statTotal     = $('statTotal');
+const $statStreak    = $('statStreak');
+
+// Shared AudioContext
+let audioCtx = null;
+
+// ── Helpers ────────────────────────────────────────────
+const pad2 = n => String(n).padStart(2, '0');
+
+const loadJSON = key => {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; }
+  catch { return {}; }
+};
+const saveJSON = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+
+function stopTimer() {
+  clearInterval(state.timerId);
+  state.timerId = null;
+}
+
+function getPhaseSeconds() {
+  switch (state.phase) {
+    case 'work':       return settings.workMinutes * 60;
+    case 'shortBreak': return settings.shortBreakMinutes * 60;
+    case 'longBreak':  return settings.longBreakMinutes * 60;
+  }
+}
+
+function syncUI(fraction = 0) {
+  updateDisplay();
+  updateRing(fraction);
+  updatePhaseLabel();
+  updateStartBtn();
+  updateRoundDots();
+}
+
+function syncSettingsInputs() {
+  $inputWork.value = settings.workMinutes;
+  $inputShortBreak.value = settings.shortBreakMinutes;
+  $inputLongBreak.value = settings.longBreakMinutes;
+  $inputVolume.value = settings.volume;
+}
+
+function persistSettings() {
+  saveJSON('pomodoro_settings', settings);
+}
+
+// ── Init ───────────────────────────────────────────────
+function init() {
+  history = loadJSON('pomodoro_history');
+
+  // Load settings via merge
+  const saved = loadJSON('pomodoro_settings');
+  Object.keys(defaults).forEach(k => {
+    if (saved[k] != null) settings[k] = saved[k];
+  });
+  settings.volume = (saved.volume != null) ? saved.volume : defaults.volume; // 0 is valid
+
+  // Generate round dots
+  $roundDots.innerHTML = '';
+  for (let i = 0; i < ROUNDS_PER_CYCLE; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'round-dot';
+    $roundDots.appendChild(dot);
+  }
+
+  applyTheme();
+  state.remainingSeconds = getPhaseSeconds();
+  syncUI(0);
+  updateStats();
+}
+
+// ── Timer logic ────────────────────────────────────────
+function tick() {
+  const elapsed = Math.floor((Date.now() - state.timerStartMs) / 1000);
+  const total = getPhaseSeconds();
+  state.remainingSeconds = Math.max(0, total - elapsed);
+  const fraction = Math.min(1, elapsed / total);
+  updateDisplay();
+  updateRing(fraction);
+  if (state.remainingSeconds <= 0) {
+    stopTimer();
+    complete();
+  }
+}
+
+function start() {
+  if (state.status === 'running') return;
+  if (state.status === 'idle') {
+    state.remainingSeconds = getPhaseSeconds();
+  }
+  state.status = 'running';
+  state.timerStartMs = Date.now() - (getPhaseSeconds() - state.remainingSeconds) * 1000;
+  updateStartBtn();
+  state.timerId = setInterval(tick, 250);
+}
+
+function pause() {
+  state.status = 'paused';
+  stopTimer();
+  updateStartBtn();
+}
+
+function reset() {
+  stopTimer();
+  state.status = 'idle';
+  state.phase = 'work';
+  state.currentRound = 1;
+  state.remainingSeconds = getPhaseSeconds();
+  syncUI(0);
+}
+
+function skip() {
+  stopTimer();
+  complete();
+}
+
+function complete() {
+  playSound();
+  notify();
+
+  if (state.phase === 'work') {
+    state.completedPomodoros++;
+    recordPomodoro();
+    updateStats();
+    state.phase = state.currentRound >= ROUNDS_PER_CYCLE ? 'longBreak' : 'shortBreak';
+    state.currentRound = state.currentRound >= ROUNDS_PER_CYCLE ? 1 : state.currentRound + 1;
+  } else {
+    state.phase = 'work';
+  }
+
+  state.status = 'idle';
+  state.remainingSeconds = getPhaseSeconds();
+  syncUI(0);
+}
+
+// ── Display updates ────────────────────────────────────
+function updateDisplay() {
+  const m = Math.floor(state.remainingSeconds / 60);
+  $timeDisplay.textContent = `${pad2(m)}:${pad2(state.remainingSeconds % 60)}`;
+}
+
+function updateRing(fraction) {
+  $ringProgress.setAttribute('stroke-dashoffset', RING_CIRCUMFERENCE * fraction);
+  $ringProgress.classList.toggle('break', state.phase !== 'work');
+}
+
+function updatePhaseLabel() {
+  if (state.status === 'paused') { $phaseLabel.textContent = '⏸ 已暂停'; return; }
+  if (state.status === 'idle' && state.phase === 'work' && state.completedPomodoros === 0) {
+    $phaseLabel.textContent = '🍅 准备开始'; return;
+  }
+  $phaseLabel.textContent = PHASE_LABELS[state.phase];
+}
+
+function updateStartBtn() {
+  const isBreak = state.phase !== 'work';
+  $btnStart.textContent = state.status === 'running' ? '⏸ 暂停' : '▶ 开始';
+  $btnStart.classList.toggle('break-mode', isBreak);
+}
+
+function updateRoundDots() {
+  const dots = $roundDots.querySelectorAll('.round-dot');
+  dots.forEach((dot, i) => {
+    const r = i + 1;
+    dot.classList.remove('done', 'current');
+    if (state.phase !== 'work') {
+      if (r < state.currentRound || (state.currentRound === 1 && state.completedPomodoros > 0)) {
+        dot.classList.add('done');
+      }
+    } else {
+      if (r < state.currentRound) dot.classList.add('done');
+      if (r === state.currentRound) dot.classList.add('current');
+    }
+  });
+}
+
+// ── Sound ──────────────────────────────────────────────
+function playSound() {
+  if (settings.volume <= 0) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume();
+    const gain = audioCtx.createGain();
+    gain.gain.value = settings.volume / 100;
+    gain.connect(audioCtx.destination);
+
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      osc.start(audioCtx.currentTime + i * 0.15);
+      osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+    });
+  } catch (e) { /* audio not supported */ }
+}
+
+// ── Notification ───────────────────────────────────────
+function notify() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    sendNotify();
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => { if (p === 'granted') sendNotify(); });
+  }
+}
+
+function sendNotify() {
+  const body = state.phase === 'work'
+    ? '🎉 专注完成！休息一下吧~'
+    : '⏰ 休息结束！开始新的番茄~';
+  new Notification('🍅 番茄钟', { body, icon: '🍅', silent: true });
+}
+
+// ── History / Stats ────────────────────────────────────
+function dateKey(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function recordPomodoro() {
+  const today = dateKey();
+  history[today] = (history[today] || 0) + 1;
+  // Cleanup: remove entries older than 60 days (every 10th pomodoro)
+  if (history[today] % 10 === 0) {
+    const cutoff = dateKey(new Date(Date.now() - 60 * 86400000));
+    Object.keys(history).forEach(k => { if (k < cutoff) delete history[k]; });
+  }
+  saveJSON('pomodoro_history', history);
+}
+
+function getWeekKeys() {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  const keys = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    keys.push(dateKey(d));
+  }
+  return keys;
+}
+
+function calcStreak() {
+  const sorted = Object.keys(history).filter(k => history[k] > 0).sort().reverse();
+  if (!sorted.length) return 0;
+  const today = dateKey();
+  let expected = new Date(today);
+  let streak = 0;
+  for (const k of sorted) {
+    const d = dateKey(expected);
+    if (k !== d) break;
+    streak++;
+    expected.setDate(expected.getDate() - 1);
+  }
+  return streak;
+}
+
+function updateStats() {
+  const todayKey = dateKey();
+  const weekKeys = getWeekKeys();
+  $statToday.textContent = history[todayKey] || 0;
+  $statWeek.textContent = weekKeys.reduce((sum, k) => sum + (history[k] || 0), 0);
+  $statTotal.textContent = Object.values(history).reduce((sum, v) => sum + v, 0);
+  $statStreak.textContent = calcStreak();
+}
+
+// ── Settings ───────────────────────────────────────────
+function saveSettings() {
+  settings.workMinutes = Math.max(1, Math.min(120, parseInt($inputWork.value) || 25));
+  settings.shortBreakMinutes = Math.max(1, Math.min(60, parseInt($inputShortBreak.value) || 5));
+  settings.longBreakMinutes = Math.max(1, Math.min(120, parseInt($inputLongBreak.value) || 15));
+  settings.volume = Math.max(0, Math.min(100, parseInt($inputVolume.value) || 70));
+  persistSettings();
+  if (state.status === 'idle') {
+    state.remainingSeconds = getPhaseSeconds();
+    updateDisplay();
+  }
+  syncSettingsInputs();
+}
+
+// ── Theme ───────────────────────────────────────────────
+function toggleTheme() {
+  settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
+  persistSettings();
+  applyTheme();
+}
+
+function applyTheme() {
+  document.body.setAttribute('data-theme', settings.theme);
+  $btnTheme.textContent = settings.theme === 'dark' ? '☀️' : '🌙';
+}
+
+// ── Event Listeners ────────────────────────────────────
+$btnStart.addEventListener('click', () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+  state.status === 'running' ? pause() : start();
+});
+
+$btnReset.addEventListener('click', reset);
+$btnSkip.addEventListener('click', skip);
+$btnTheme.addEventListener('click', toggleTheme);
+
+$btnSettings.addEventListener('click', () => {
+  $settingsPanel.classList.toggle('hidden');
+  if (!$settingsPanel.classList.contains('hidden')) syncSettingsInputs();
+});
+
+[$inputWork, $inputShortBreak, $inputLongBreak, $inputVolume].forEach(el => {
+  el.addEventListener('change', saveSettings);
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault();
+      state.status === 'running' ? pause() : start();
+      break;
+    case 'KeyR': reset(); break;
+    case 'KeyS': skip(); break;
+  }
+});
+
+// ── Go! ────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
